@@ -1,35 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from "react";
+import Tesseract from "tesseract.js";
+import {
+  countryRegex,
+  createMaskingImage,
+  findIdNumber,
+  findIdNumberCoord,
+} from "./lib";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [image, setImage] = useState<string | null>(null);
+  const [result, setResult] = useState<any>("");
+  const [country, setCountry] = useState(Object.keys(countryRegex)[0]);
+  const [progressValue, setProgressValue] = useState<number>(0);
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setImage(URL.createObjectURL(event.target.files[0]));
+    }
+  };
+
+  const handleImageRecognition = async () => {
+    if (image) {
+      const lang = "eng";
+      const { data } = await Tesseract.recognize(image, lang, {
+        logger: (e) => {
+          if (e.status === "recognizing text") setProgressValue(e.progress);
+        },
+      });
+
+      const idNumber = findIdNumber(data.text, country);
+      if (!idNumber) return;
+      const { lines } = data;
+      const coords = findIdNumberCoord(lines, idNumber);
+      const maskedImage = await createMaskingImage(image, coords);
+      setResult(maskedImage);
+    }
+  };
 
   return (
-    <div className="App">
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+    <div>
+      <input type="file" onChange={handleFileUpload} />
+      <select onChange={(e) => setCountry(e.target.value)}>
+        {Object.keys(countryRegex).map((countryCode) => {
+          return (
+            <option value={countryCode} key={countryCode}>
+              {countryCode}
+            </option>
+          );
+        })}
+      </select>
+      <button onClick={handleImageRecognition}>Recognize</button>
+      <progress value={progressValue} />
+      {result && <img src={result} />}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
