@@ -1,5 +1,6 @@
 interface CountryType {
   [countryCode: string]: {
+    name: string;
     regex: RegExp;
     splitBy: string;
   };
@@ -11,21 +12,23 @@ interface MaskingBlockType {
   height: number;
 }
 
-export const countryRegex: CountryType = {
-  BD: {
+export const countryValues: CountryType = {
+  ben: {
+    name: "bangladesh",
     regex: /\d{3}\s*\d{3}\s*\d{4}/,
     splitBy: " ",
   },
-  KO: {
+  kor: {
+    name: "korea",
     regex: /[0-9]{6}-?[1-4][0-9]{6}/g,
     splitBy: " ",
   },
 };
 
 export const findIdNumber = (fullText: string, country: keyof CountryType) => {
-  const matches = fullText.match(countryRegex[country].regex);
+  const matches = fullText.match(countryValues[country].regex);
   if (!matches) return null;
-  return matches[0].split(countryRegex[country].splitBy);
+  return matches[0].split(countryValues[country].splitBy);
 };
 
 export const findIdNumberCoord = (
@@ -51,7 +54,7 @@ export const findIdNumberCoord = (
   return list;
 };
 
-export const createMaskingImage = async (
+export const maskingImage = async (
   image: string,
   idCoordList: MaskingBlockType[]
 ) => {

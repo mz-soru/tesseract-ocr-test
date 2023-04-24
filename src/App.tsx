@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import Tesseract from "tesseract.js";
 import {
-  countryRegex,
-  createMaskingImage,
+  countryValues,
+  maskingImage,
   findIdNumber,
   findIdNumberCoord,
 } from "./lib";
@@ -10,7 +10,7 @@ import {
 function App() {
   const [image, setImage] = useState<string | null>(null);
   const [result, setResult] = useState<any>("");
-  const [country, setCountry] = useState(Object.keys(countryRegex)[0]);
+  const [country, setCountry] = useState(Object.keys(countryValues)[0]);
   const [progressValue, setProgressValue] = useState<number>(0);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,37 +19,43 @@ function App() {
     }
   };
 
-  const handleImageRecognition = async () => {
-    if (image) {
-      const lang = "eng";
-      const { data } = await Tesseract.recognize(image, lang, {
-        logger: (e) => {
-          if (e.status === "recognizing text") setProgressValue(e.progress);
-        },
-      });
+  const imageRecognition = async () => {
+    if (!image) return;
+    const { data } = await Tesseract.recognize(image, "eng", {
+      logger: (e) => {
+        if (e.status === "recognizing text") setProgressValue(e.progress);
+      },
+    });
 
-      const idNumber = findIdNumber(data.text, country);
-      if (!idNumber) return;
-      const { lines } = data;
-      const coords = findIdNumberCoord(lines, idNumber);
-      const maskedImage = await createMaskingImage(image, coords);
-      setResult(maskedImage);
+    // image에서 정규식에 맞는 id number를 추출
+    const idNumber = findIdNumber(data.text, country);
+
+    if (!idNumber) {
+      alert("이미지 확인에 실패했습니다. 다른 이미지를 넣어주세요");
+      return;
     }
+    const { lines } = data;
+    // id number의 좌표값을 찾음
+    const coords = findIdNumberCoord(lines, idNumber);
+
+    // 좌표값에 마스킹
+    const maskedImage = await maskingImage(image, coords);
+    setResult(maskedImage);
   };
 
   return (
     <div>
-      <input type="file" onChange={handleFileUpload} />
+      <input type="file" onChange={handleFileUpload} accept="image/*" />
       <select onChange={(e) => setCountry(e.target.value)}>
-        {Object.keys(countryRegex).map((countryCode) => {
+        {Object.keys(countryValues).map((countryCode) => {
           return (
             <option value={countryCode} key={countryCode}>
-              {countryCode}
+              {countryValues[countryCode].name}
             </option>
           );
         })}
       </select>
-      <button onClick={handleImageRecognition}>Recognize</button>
+      <button onClick={imageRecognition}>Recognize</button>
       <progress value={progressValue} />
       {result && <img src={result} />}
     </div>
